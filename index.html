@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Desmontagem Sequencial - Elétrica</title>
+    
+    <link rel="icon" type="image/x-icon" href="fw_mini.ico">
+    
+    <!-- SDK do Supabase e Bibliotecas -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; }
+        #loginScreen { display: flex; justify-content: center; align-items: center; height: 100vh; margin: -20px; background-color: #f4f7f6; }
+        .login-box { background: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        .login-box img { max-height: 60px; margin-bottom: 20px; }
+        .login-box h2 { color: #2c3e50; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; margin-bottom: 5px; color: #7f8c8d; font-weight: bold; font-size: 14px; }
+        .input-group input { width: 100%; padding: 12px; border: 1px solid #bdc3c7; border-radius: 5px; box-sizing: border-box; font-size: 14px; }
+        .btn-login { width: 100%; padding: 12px; background-color: #3498db; color: white; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.3s; }
+        .btn-login:hover { background-color: #2980b9; }
+        #loginError { color: #e74c3c; font-size: 14px; margin-top: 15px; display: none; font-weight: bold;}
+
+        #appScreen { display: none; }
+        .container { max-width: 1300px; margin: 0 auto; background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); position: relative; min-height: 80vh; }
+        .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; position: absolute; top: 20px; left: 30px; }
+        .status-conectado { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-erro { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status-loading { background-color: #e2e3e5; color: #383d41; border: 1px solid #d6d8db; }
+        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; }
+        .dot-green { background-color: #28a745; }
+        .dot-red { background-color: #dc3545; }
+        .dot-gray { background-color: #6c757d; }
+        .btn-logout { position: absolute; top: 20px; right: 30px; background-color: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 13px; }
+        .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; font-size: 18px; color: #34495e; }
+        .spinner { border: 6px solid #f3f3f3; border-top: 6px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .header-logos { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #ecf0f1; margin-top: 30px;}
+        .header-logos img { max-height: 60px; object-fit: contain; }
+        h1 { color: #2c3e50; text-align: center; border-bottom: 3px solid #3498db; padding-bottom: 10px; margin-bottom: 20px; }
+        .info-geral { background-color: #ecf0f1; padding: 15px; border-radius: 5px; margin-bottom: 20px; font-size: 14px; }
+        .btn-export { background-color: #27ae60; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 5px; cursor: pointer; display: block; margin: 0 auto 20px auto; font-weight: bold; transition: background-color 0.3s; }
+        .btn-export:hover { background-color: #219150; }
+        .btn-export:disabled { background-color: #95a5a6; cursor: not-allowed; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 13px; }
+        th, td { border: 1px solid #bdc3c7; padding: 8px; text-align: left; vertical-align: middle; }
+        th { background-color: #34495e; color: white; font-weight: bold; text-transform: uppercase; font-size: 12px; text-align: center; }
+        .bg-grupo-1 { background-color: #e8f4f8; } .bg-grupo-2 { background-color: #eafaf1; } .bg-grupo-3 { background-color: #fef9e7; } .bg-grupo-4 { background-color: #f9ebea; } .bg-grupo-5 { background-color: #f4ecf7; } 
+        .obs-text { font-size: 11px; color: #7f8c8d; font-style: italic; }
+        .cell-content { display: flex; align-items: center; gap: 10px; }
+        .text-content { flex: 1; word-break: break-word; }
+        .img-thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 2px solid #bdc3c7; cursor: pointer; transition: transform 0.2s, border-color 0.2s; flex-shrink: 0; background-color: #eee; }
+        .img-thumb:hover { transform: scale(1.1); border-color: #3498db; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); justify-content: center; align-items: center; }
+        .modal-content { max-width: 90%; max-height: 90%; border-radius: 8px; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
+        .close { position: absolute; top: 20px; right: 40px; color: #fff; font-size: 40px; font-weight: bold; cursor: pointer; transition: color 0.2s; }
+        .close:hover { color: #e74c3c; }
+        #tabelaWrapper { display: none; }
+    </style>
+</head>
+<body>
+
+<!-- TELA 1: LOGIN -->
+<div id="loginScreen">
+    <div class="login-box">
+        <img src="FW LOGO (remov).png" alt="FW Logo">
+        <h2>Acesso ao Sistema</h2>
+        <div class="input-group">
+            <label for="loginUser">Usuário (E-mail)</label>
+            <input type="text" id="loginUser" placeholder="Digite seu e-mail">
+        </div>
+        <div class="input-group">
+            <label for="loginPass">Senha</label>
+            <input type="password" id="loginPass" placeholder="Digite sua senha">
+        </div>
+        <button class="btn-login" id="btnLogin" onclick="fazerLogin()">Entrar</button>
+        <div id="loginError"></div>
+    </div>
+</div>
+
+<!-- TELA 2: RELATÓRIO -->
+<div id="appScreen">
+    <div class="container">
+        <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+        
+        <div id="statusBadge" class="status-badge status-loading">
+            <span class="dot dot-gray"></span> Conectando...
+        </div>
+
+        <div class="header-logos">
+            <img src="FW LOGO (remov).png" alt="FW Logo">
+            <img src="Delservin LOGO.png" alt="Delservin Logo">
+            <img src="Altercon LOGO.png" alt="Altercon Logo">
+        </div>
+
+        <h1>Relatório de Desmontagem Sequencial - Elétrica</h1>
+        
+        <div id="loadingScreen" class="loading-screen">
+            <div class="spinner"></div>
+            <p>Buscando dados no banco e carregando imagens...</p>
+        </div>
+
+        <div id="tabelaWrapper">
+            <div class="info-geral">
+                <strong>Projeto:</strong> Carimbó / Máquina: CP 700<br>
+                <strong>Data de Referência:</strong> 27 a 30 de outubro de 2026
+            </div>
+
+            <button class="btn-export" id="btnExport" onclick="exportToExcel()">
+                ⬇️ Baixar Relatório em Excel (Com Imagens e Cores)
+            </button>
+
+            <table id="tabelaRelatorio">
+                <thead>
+                    <tr>
+                        <th width="5%">Nº</th>
+                        <th width="15%">Equipamento</th>
+                        <th width="30%">De</th>
+                        <th width="30%">Para</th>
+                        <th width="20%">Evidência Visual / Observação</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Imagem -->
+<div id="imageModal" class="modal" onclick="closeModal()">
+    <span class="close">&times;</span>
+    <img class="modal-content" id="modalImg" onclick="event.stopPropagation()">
+</div>
+
+<script>
+    // ==========================================
+    // CONFIGURAÇÕES DO SUPABASE
+    // ==========================================
+    const SUPABASE_URL = "https://eokhafnfmynhridksnuh.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVva2hhZm5mbXluaHJpZGtzbnVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMzYwMDIsImV4cCI6MjA4NTcxMjAwMn0.-RZtzUYpdOI4_WKOmP9lqw9guJmvh8XFeAL6UXhA4vo";
+    
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ✅ CORRIGIDO AQUI: O NOME DO BUCKET É relatorio_eletrico
+    const BUCKET_NAME = "relatorio_eletrico"; 
+
+    const statusBadge = document.getElementById('statusBadge');
+    const loadingScreen = document.getElementById('loadingScreen');
+    const tabelaWrapper = document.getElementById('tabelaWrapper');
+    const tbody = document.getElementById('tabelaBody');
+
+    // ==========================================
+    // 1. LÓGICA DE LOGIN (VIA FUNÇÃO RPC SEGURA)
+    // ==========================================
+    async function fazerLogin() {
+        const email = document.getElementById('loginUser').value.trim();
+        const password = document.getElementById('loginPass').value;
+        const btnLogin = document.getElementById('btnLogin');
+        const errorMsg = document.getElementById('loginError');
+
+        if (!email || !password) {
+            errorMsg.innerText = "Preencha todos os campos!";
+            errorMsg.style.display = "block";
+            return;
+        }
+
+        btnLogin.innerText = "Verificando...";
+        btnLogin.disabled = true;
+        errorMsg.style.display = "none";
+
+        try {
+            const { data: loginValido, error } = await supabaseClient.rpc('fazer_login', {
+                user_email: email,
+                user_pass: password
+            });
+
+            if (error) throw error;
+
+            if (loginValido === true) {
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('appScreen').style.display = 'block';
+                
+                sessionStorage.setItem('usuarioLogado', email);
+                carregarDados();
+            } else {
+                errorMsg.innerText = "Usuário ou senha inválidos!";
+                errorMsg.style.display = "block";
+                btnLogin.innerText = "Entrar";
+                btnLogin.disabled = false;
+            }
+
+        } catch (error) {
+            console.error("Erro no login:", error);
+            errorMsg.innerText = "Erro de comunicação com o servidor.";
+            errorMsg.style.display = "block";
+            btnLogin.innerText = "Entrar";
+            btnLogin.disabled = false;
+        }
+    }
+
+    function fazerLogout() {
+        sessionStorage.removeItem('usuarioLogado');
+        window.location.reload();
+    }
+
+    document.getElementById('loginPass').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') fazerLogin();
+    });
+
+    function verificarSessao() {
+        const logado = sessionStorage.getItem('usuarioLogado');
+        if (logado) {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('appScreen').style.display = 'block';
+            carregarDados();
+        }
+    }
+    document.addEventListener("DOMContentLoaded", verificarSessao);
+
+    // ==========================================
+    // 2. CARREGAR DADOS DO RELATÓRIO
+    // ==========================================
+    async function carregarDados() {
+        try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/relatorio_eletrico?select=*&order=num.asc`, {
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            });
+
+            if (!response.ok) throw new Error("Falha na conexão com o banco.");
+            
+            const data = await response.json();
+            tbody.innerHTML = ''; 
+
+            data.forEach(item => {
+                const corGrupo = `bg-grupo-${item.grupo}`;
+                
+                // Monta a URL correta com o bucket "relatorio_eletrico"
+                const urlFotoDe = item.foto_de ? `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${item.foto_de}` : null;
+                const urlFotoPara = item.foto_para ? `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${item.foto_para}` : null;
+
+                const imgDeHtml = urlFotoDe ? `<img src="${urlFotoDe}" class="img-thumb" onclick="openModal(this.src)" title="Foto: ${item.foto_de}" onerror="this.src='https://placehold.co/100x100/e74c3c/white?text=404'">` : '';
+                const imgParaHtml = urlFotoPara ? `<img src="${urlFotoPara}" class="img-thumb" onclick="openModal(this.src)" title="Foto: ${item.foto_para}" onerror="this.src='https://placehold.co/100x100/e74c3c/white?text=404'">` : '';
+
+                const tr = document.createElement('tr');
+                tr.className = corGrupo;
+                tr.innerHTML = `
+                    <td>${item.num}</td>
+                    <td>${item.equipamento}</td>
+                    <td>
+                        <div class="cell-content">
+                            <div class="text-content">${item.de}</div>
+                            ${imgDeHtml}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="cell-content">
+                            <div class="text-content">${item.para}</div>
+                            ${imgParaHtml}
+                        </div>
+                    </td>
+                    <td>${item.obs || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            loadingScreen.style.display = 'none';
+            tabelaWrapper.style.display = 'block';
+            
+            statusBadge.className = 'status-badge status-conectado';
+            statusBadge.innerHTML = '<span class="dot dot-green"></span> Conectado ao Supabase';
+
+        } catch (error) {
+            console.error(error);
+            loadingScreen.innerHTML = `<p style="color:#e74c3c; font-weight:bold;">Erro ao carregar os dados.</p>`;
+            statusBadge.className = 'status-badge status-erro';
+            statusBadge.innerHTML = '<span class="dot dot-red"></span> Falha na Conexão';
+        }
+    }
+
+    // ==========================================
+    // 3. MODAL DE IMAGEM E EXPORTAÇÃO
+    // ==========================================
+    function openModal(src) {
+        document.getElementById("imageModal").style.display = "flex";
+        document.getElementById("modalImg").src = src;
+    }
+
+    function closeModal() {
+        document.getElementById("imageModal").style.display = "none";
+    }
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === "Escape") closeModal();
+    });
+
+    async function exportToExcel() {
+        const btn = document.getElementById('btnExport');
+        btn.innerText = "Gerando Excel... Aguarde";
+        btn.disabled = true;
+
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Relatório Elétrico');
+
+            worksheet.columns = [
+                { header: 'Nº', key: 'num', width: 6 },
+                { header: 'Equipamento', key: 'equip', width: 25 },
+                { header: 'De', key: 'de', width: 45 },
+                { header: 'Para', key: 'para', width: 45 },
+                { header: 'Evidência Visual / Obs', key: 'obs', width: 50 }
+            ];
+
+            const headerRow = worksheet.getRow(1);
+            headerRow.height = 25;
+            headerRow.eachCell((cell) => {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF34495E' } };
+                cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+            });
+
+            const rows = document.querySelectorAll('#tabelaRelatorio tbody tr');
+            let rowIndex = 2;
+
+            for (let i = 0; i < rows.length; i++) {
+                const tr = rows[i];
+                const tds = tr.querySelectorAll('td');
+                if(tds.length < 5) continue; 
+
+                const num = tds[0].innerText;
+                const equip = tds[1].innerText;
+                const de = tds[2].querySelector('.text-content').innerText;
+                const para = tds[3].querySelector('.text-content').innerText;
+                const obs = tds[4].innerText;
+
+                const row = worksheet.addRow([num, equip, de, para, obs]);
+                row.height = 50;
+
+                let bgColor = 'FFFFFFFF';
+                if (tr.classList.contains('bg-grupo-1')) bgColor = 'FFE8F4F8';
+                if (tr.classList.contains('bg-grupo-2')) bgColor = 'FFEAFAF1';
+                if (tr.classList.contains('bg-grupo-3')) bgColor = 'FFFEF9E7';
+                if (tr.classList.contains('bg-grupo-4')) bgColor = 'FFF9EBEA';
+                if (tr.classList.contains('bg-grupo-5')) bgColor = 'FFF4ECF7';
+
+                row.eachCell((cell, colNumber) => {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+                    cell.border = { top: {style:'thin', color: {argb:'FFBDC3C7'}}, left: {style:'thin', color: {argb:'FFBDC3C7'}}, bottom: {style:'thin', color: {argb:'FFBDC3C7'}}, right: {style:'thin', color: {argb:'FFBDC3C7'}} };
+                    if (colNumber === 1) cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    if (colNumber === 3 || colNumber === 4) cell.alignment = { vertical: 'middle', horizontal: 'left' };
+                });
+
+                const imgElements = tr.querySelectorAll('img.img-thumb');
+                for (let j = 0; j < imgElements.length; j++) {
+                    const imgElement = imgElements[j];
+                    if (imgElement.src.includes('placehold.co')) continue;
+
+                    const colNum = (j === 0) ? 3 : 4;
+
+                    try {
+                        const response = await fetch(imgElement.src, {
+                            headers: {
+                                'apikey': SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                            }
+                        });
+                        
+                        if (!response.ok) throw new Error("Falha ao baixar imagem");
+                        
+                        const blob = await response.blob();
+                        const arrayBuffer = await blob.arrayBuffer();
+
+                        const imageId = workbook.addImage({
+                            buffer: arrayBuffer,
+                            extension: 'jpeg', 
+                        });
+
+                        worksheet.addImage(imageId, {
+                            tl: { col: colNum - 1, row: rowIndex - 1, nativeColOff: 250000 },
+                            ext: { width: 50, height: 50 },
+                            editAs: 'oneCell'
+                        });
+                    } catch (err) {
+                        console.log("Erro ao carregar imagem para o Excel", err);
+                    }
+                }
+                rowIndex++;
+            }
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            saveAs(new Blob([buffer], { type: "application/octet-stream" }), "Relatorio_Carimbo_Completo.xlsx");
+
+        } catch (error) {
+            console.error(error);
+            alert("Ocorreu um erro ao gerar o Excel.");
+        } finally {
+            btn.innerText = "⬇️ Baixar Relatório em Excel (Com Imagens e Cores)";
+            btn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
