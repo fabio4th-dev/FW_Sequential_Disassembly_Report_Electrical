@@ -50,6 +50,7 @@
         th, td { border: 1px solid #bdc3c7; padding: 8px; text-align: left; vertical-align: middle; }
         th { background-color: #34495e; color: white; font-weight: bold; text-transform: uppercase; font-size: 12px; text-align: center; }
         .bg-grupo-1 { background-color: #e8f4f8; } .bg-grupo-2 { background-color: #eafaf1; } .bg-grupo-3 { background-color: #fef9e7; } .bg-grupo-4 { background-color: #f9ebea; } .bg-grupo-5 { background-color: #f4ecf7; } 
+        .bg-grupo-6 { background-color: #ebf5fb; } .bg-grupo-7 { background-color: #fdf2e9; } .bg-grupo-8 { background-color: #f4f6f7; }
         .obs-text { font-size: 11px; color: #7f8c8d; font-style: italic; }
         .cell-content { display: flex; align-items: center; gap: 10px; }
         .text-content { flex: 1; word-break: break-word; }
@@ -144,8 +145,6 @@
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVva2hhZm5mbXluaHJpZGtzbnVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMzYwMDIsImV4cCI6MjA4NTcxMjAwMn0.-RZtzUYpdOI4_WKOmP9lqw9guJmvh8XFeAL6UXhA4vo";
     
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // ✅ CORRIGIDO AQUI: O NOME DO BUCKET É relatorio_eletrico
     const BUCKET_NAME = "relatorio_eletrico"; 
 
     const statusBadge = document.getElementById('statusBadge');
@@ -226,6 +225,7 @@
     // ==========================================
     async function carregarDados() {
         try {
+            // ✅ CORRIGIDO: Ordenando pela coluna 'num' e não 'contagem'
             const response = await fetch(`${SUPABASE_URL}/rest/v1/relatorio_eletrico?select=*&order=num.asc`, {
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
@@ -239,9 +239,10 @@
             tbody.innerHTML = ''; 
 
             data.forEach(item => {
-                const corGrupo = `bg-grupo-${item.grupo}`;
+                // Usa o grupo do banco para definir a cor
+                const corGrupo = `bg-grupo-${item.grupo || 1}`;
                 
-                // Monta a URL correta com o bucket "relatorio_eletrico"
+                // Monta as URLs das imagens
                 const urlFotoDe = item.foto_de ? `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${item.foto_de}` : null;
                 const urlFotoPara = item.foto_para ? `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${item.foto_para}` : null;
 
@@ -251,7 +252,7 @@
                 const tr = document.createElement('tr');
                 tr.className = corGrupo;
                 tr.innerHTML = `
-                    <td>${item.num}</td>
+                    <td style="text-align:center; font-weight:bold;">${item.num}</td>
                     <td>${item.equipamento}</td>
                     <td>
                         <div class="cell-content">
@@ -265,7 +266,7 @@
                             ${imgParaHtml}
                         </div>
                     </td>
-                    <td>${item.obs || '-'}</td>
+                    <td class="obs-text">${item.obs || '-'}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -274,7 +275,7 @@
             tabelaWrapper.style.display = 'block';
             
             statusBadge.className = 'status-badge status-conectado';
-            statusBadge.innerHTML = '<span class="dot dot-green"></span> Conectado ao Supabase';
+            statusBadge.innerHTML = `<span class="dot dot-green"></span> Conectado ao Supabase`;
 
         } catch (error) {
             console.error(error);
@@ -349,6 +350,9 @@
                 if (tr.classList.contains('bg-grupo-3')) bgColor = 'FFFEF9E7';
                 if (tr.classList.contains('bg-grupo-4')) bgColor = 'FFF9EBEA';
                 if (tr.classList.contains('bg-grupo-5')) bgColor = 'FFF4ECF7';
+                if (tr.classList.contains('bg-grupo-6')) bgColor = 'FFEBF5FB';
+                if (tr.classList.contains('bg-grupo-7')) bgColor = 'FFFDF2E9';
+                if (tr.classList.contains('bg-grupo-8')) bgColor = 'FFF4F6F7';
 
                 row.eachCell((cell, colNumber) => {
                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
@@ -362,7 +366,7 @@
                     const imgElement = imgElements[j];
                     if (imgElement.src.includes('placehold.co')) continue;
 
-                    const colNum = (j === 0) ? 3 : 4;
+                    const colNum = (j === 0) ? 3 : 4; // Coluna 3 para "De", Coluna 4 para "Para"
 
                     try {
                         const response = await fetch(imgElement.src, {
